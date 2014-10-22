@@ -7,6 +7,7 @@ import net.dongliu.apk.parser.bean.UseFeature;
 import net.dongliu.apk.parser.struct.resource.ResourceTable;
 import net.dongliu.apk.parser.struct.xml.*;
 
+import java.util.LinkedList;
 import java.util.Locale;
 
 /**
@@ -25,6 +26,16 @@ public class ApkMetaConstructor implements XmlStreamer {
     private ResourceTable resourceTable;
 
     private Locale locale;
+
+    private boolean isLaunchableActivitySetted = false;
+    private String launchableActivity;
+    private static LinkedList<String> launchableActivitySkipList = new LinkedList<String>(){
+        {
+            // should work on most package
+            this.add("android.intent.action.MAIN");
+            this.add("android.intent.category.DEFAULT");
+        }
+    };
 
     public ApkMetaConstructor(ResourceTable resourceTable, Locale locale) {
         this.resourceTable = resourceTable;
@@ -72,6 +83,19 @@ public class ApkMetaConstructor implements XmlStreamer {
         } else if (currentTag.equals("uses-permission")) {
             if (name.equals("name")) {
                 apkMeta.addPermission(value);
+            }
+        } else if (name.equals("name")) {
+            if (!isLaunchableActivitySetted) {
+                if (value.equals("android.intent.category.LAUNCHER")) {
+                    // the result is not reliable
+                    apkMeta.setLaunchableActivity(launchableActivity);
+                    isLaunchableActivitySetted = true;
+                } else {
+                    // TODO find a way to filter Activity
+                    if (!launchableActivitySkipList.contains(value)) {
+                        launchableActivity = value;
+                    }
+                }
             }
         } else if (currentTag.equals("supports-screens")) {
             if (name.equals("anyDensity")) {
