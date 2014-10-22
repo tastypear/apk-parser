@@ -1,11 +1,15 @@
 package net.dongliu.apk.parser;
 
 import net.dongliu.apk.parser.bean.ApkMeta;
-import net.dongliu.apk.parser.bean.Locale;
+import net.dongliu.apk.parser.bean.CertificateMeta;
+import net.dongliu.apk.parser.bean.DexClass;
 import org.apache.commons.cli.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.cert.CertificateEncodingException;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -15,9 +19,9 @@ import java.util.Set;
  */
 public class Main {
 
-    public static void main(String args[]) throws IOException {
+    public static void main(String args[]) throws IOException, CertificateEncodingException {
         Options opt = new Options();
-        opt.addOption("t", "type", true, "type, which couble be: manifest | info | locale");
+        opt.addOption("t", "type", true, "type, which couble be: manifest | info | locale | dex | sign");
         opt.addOption("l", "locale", true, "locale, the language and country, as en_US, en, etc.");
         opt.addOption("h", "help", false, "show helps.");
 
@@ -78,25 +82,39 @@ public class Main {
         }
 
         ApkParser apkParser = new ApkParser(new File(filePath));
-        if (locale != null) {
-            apkParser.setPreferredLocale(locale);
-        }
-
-        if (type.equals("manifest")) {
-            String xml = apkParser.getManifestXml();
-            System.out.println(xml);
-        } else if (type.equals("info")) {
-            ApkMeta apkMeta = apkParser.getApkMeta();
-            System.out.println(apkMeta);
-        } else if (type.equals("locale")) {
-            Set<Locale> locales = apkParser.getLocales();
-            for (Locale l : locales) {
-                System.out.println(l);
+        try {
+            if (locale != null) {
+                apkParser.setPreferredLocale(locale);
             }
-        } else {
-            System.out.println("Unknow type:" + type);
-            helpFormatter.printHelp(cmdLineSyntax, opt);
+
+            if (type.equals("manifest")) {
+                String xml = apkParser.getManifestXml();
+                System.out.println(xml);
+            } else if (type.equals("info")) {
+                ApkMeta apkMeta = apkParser.getApkMeta();
+                System.out.println(apkMeta);
+            } else if (type.equals("locale")) {
+                Set<Locale> locales = apkParser.getLocales();
+                for (Locale l : locales) {
+                    System.out.println(l.toLanguageTag());
+                }
+            } else if (type.equals("dex")) {
+                DexClass[] dexClasses = apkParser.getDexClasses();
+                for (DexClass dexClass : dexClasses) {
+                    System.out.println(dexClass);
+                }
+            } else if (type.equals("sign")) {
+                List<CertificateMeta> certs = apkParser.getCertificateMetas();
+                for (CertificateMeta cert : certs) {
+                    System.out.println("Certficate md5:" + cert.getCertMd5());
+                    System.out.println("Certficate base64 md5:" + cert.getCertBase64Md5());
+                }
+            } else {
+                System.out.println("Unknow type:" + type);
+                helpFormatter.printHelp(cmdLineSyntax, opt);
+            }
+        } finally {
+            apkParser.close();
         }
-        apkParser.close();
     }
 }

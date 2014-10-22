@@ -2,8 +2,8 @@ package net.dongliu.apk.parser.struct.dex;
 
 /**
  * dex file header.
- *
  * see http://dexandroid.googlecode.com/svn/trunk/dalvik/libdex/DexFile.h
+ *
  * @author dongliu
  */
 public class DexHeader {
@@ -52,31 +52,31 @@ public class DexHeader {
     public long typeIdsOff;
 
     // u4
-    public long protoIdsSize;
+    public int protoIdsSize;
 
     // u4
     public long protoIdsOff;
 
     // u4
-    public long fieldIdsSize;
+    public int fieldIdsSize;
 
     // u4
     public long fieldIdsOff;
 
     // u4
-    public long methodIdsSize;
+    public int methodIdsSize;
 
     // u4
     public long methodIdsOff;
 
     // u4
-    public long classDefsSize;
+    public int classDefsSize;
 
     // u4
     public long classDefsOff;
 
     // u4
-    public long dataSize;
+    public int dataSize;
 
     // u4
     public long dataOff;

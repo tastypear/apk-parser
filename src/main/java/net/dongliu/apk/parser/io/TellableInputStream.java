@@ -26,7 +26,7 @@ public class TellableInputStream {
         this.byteOrder = byteOrder;
     }
 
-    protected int read() throws IOException {
+    public int read() throws IOException {
         int ret = in.read();
         if (ret != -1) {
             pos++;
@@ -76,7 +76,7 @@ public class TellableInputStream {
      *
      * @param pos
      */
-    public void advanceIfNotRearch(long pos) throws IOException {
+    public void advanceToPos(long pos) throws IOException {
         if (this.pos < pos) {
             skip((int) (pos - this.pos));
         } else if (this.pos > pos) {

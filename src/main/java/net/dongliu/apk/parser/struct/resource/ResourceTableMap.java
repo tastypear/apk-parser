@@ -1,6 +1,7 @@
 package net.dongliu.apk.parser.struct.resource;
 
 import net.dongliu.apk.parser.struct.ResValue;
+import net.dongliu.apk.parser.struct.ResourceEntity;
 
 /**
  * @author dongliu
@@ -10,7 +11,7 @@ public class ResourceTableMap {
     // ResTable_ref; unit32
     public long nameRef;
 
-    public ResValue resValue;
+    public ResourceEntity resValue;
 
 
     public String data;
@@ -46,6 +47,7 @@ public class ResourceTableMap {
         }
 
     }
+
     public static class AttributeType {
         // No type has been defined for this attribute; use generic
         // type handling.  The low 16 bits are for types that can be

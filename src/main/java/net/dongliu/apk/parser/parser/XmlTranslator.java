@@ -1,9 +1,11 @@
 package net.dongliu.apk.parser.parser;
 
 import net.dongliu.apk.parser.struct.ActivityInfo;
+import net.dongliu.apk.parser.struct.resource.ResourceTable;
 import net.dongliu.apk.parser.struct.xml.*;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * trans to xml text when parse binary xml file.
@@ -13,14 +15,18 @@ import java.util.List;
 public class XmlTranslator implements XmlStreamer {
     private StringBuilder sb;
     private int shift = 0;
-    private boolean isRoot;
-    private XmlNamespaceStartTag xmlNamespace;
+    private XmlNamespaces namespaces;
     private boolean isLastStartTag;
 
-    public XmlTranslator() {
+    private Locale locale;
+    private ResourceTable resourceTable;
+
+    public XmlTranslator(ResourceTable resourceTable, Locale locale) {
+        this.locale = locale;
+        this.resourceTable = resourceTable;
         sb = new StringBuilder();
         sb.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
-        isRoot = true;
+        this.namespaces = new XmlNamespaces();
     }
 
     @Override
@@ -34,11 +40,14 @@ public class XmlTranslator implements XmlStreamer {
             sb.append(xmlNodeStartTag.namespace).append(":");
         }
         sb.append(xmlNodeStartTag.name);
-        if (isRoot && xmlNamespace != null && xmlNamespace.uri != null) {
-            sb.append(" xmlns:").append(xmlNamespace.prefix).append("=\"")
-                    .append(xmlNamespace.uri)
-                    .append("\"");
-            isRoot = false;
+
+        List<XmlNamespaces.XmlNamespace> nps = namespaces.consumeNameSpaces();
+        if (!nps.isEmpty()) {
+            for (XmlNamespaces.XmlNamespace np : nps) {
+                sb.append(" xmlns:").append(np.getPrefix()).append("=\"")
+                        .append(np.getUri())
+                        .append("\"");
+            }
         }
         isLastStartTag = true;
     }
@@ -63,25 +72,35 @@ public class XmlTranslator implements XmlStreamer {
     @Override
     public void onAttribute(Attribute attribute) {
         sb.append(" ");
-        String namespace = attribute.namespace;
-        if (namespace != null) {
-            if (namespace.equals(xmlNamespace.uri)) {
-                sb.append(xmlNamespace.prefix).append(':');
-            } else if (!namespace.isEmpty()) {
-                sb.append(namespace).append(':');
-            }
+        String namespace = this.namespaces.getPrefixViaUri(attribute.namespace);
+        if (namespace == null) {
+            namespace = attribute.namespace;
+        }
+        if (namespace != null && !namespace.isEmpty()) {
+            sb.append(namespace).append(':');
         }
 
-        String value = attribute.getValue();
-        if (attribute.name.equals("screenOrientation")) {
-            ActivityInfo.ScreenOrienTation screenOrienTation =
-                    ActivityInfo.ScreenOrienTation.valueOf(Integer.parseInt(value));
-            if (screenOrienTation != null) {
-                value = screenOrienTation.toString();
+        String value = attribute.toStringValue(resourceTable, locale);
+        String finalValue;
+        try {
+            finalValue = getAttributeValueAsString(attribute.name, value);
+        } catch (NumberFormatException e) {
+            finalValue = value;
+        }
+        sb.append(attribute.name).append('=').append('"')
+                .append(finalValue.replace("\"", "\\\"")).append('"');
+    }
+
+    private String getAttributeValueAsString(String attributeName, String value) {
+        if (attributeName.equals("screenOrientation")) {
+            ActivityInfo.ScreenOrientation screenOrientation =
+                    ActivityInfo.ScreenOrientation.valueOf(Integer.valueOf(value));
+            if (screenOrientation != null) {
+                value = screenOrientation.toString();
             }
-        } else if (attribute.name.equals("configChanges")) {
+        } else if (attributeName.equals("configChanges")) {
             List<ActivityInfo.ConfigChanges> configChangesList =
-                    ActivityInfo.ConfigChanges.valuesOf(Integer.parseInt(value));
+                    ActivityInfo.ConfigChanges.valuesOf(Integer.valueOf(value));
             if (!configChangesList.isEmpty()) {
                 StringBuilder sb = new StringBuilder();
                 for (ActivityInfo.ConfigChanges c : configChangesList) {
@@ -90,9 +109,9 @@ public class XmlTranslator implements XmlStreamer {
                 sb.deleteCharAt(sb.length() - 1);
                 value = sb.toString();
             }
-        } else if (attribute.name.equals("windowSoftInputMode")) {
+        } else if (attributeName.equals("windowSoftInputMode")) {
             List<ActivityInfo.WindowSoftInputMode> windowSoftInputModeList =
-                    ActivityInfo.WindowSoftInputMode.valuesOf(Integer.parseInt(value));
+                    ActivityInfo.WindowSoftInputMode.valuesOf(Integer.valueOf(value));
             if (!windowSoftInputModeList.isEmpty()) {
                 StringBuilder sb = new StringBuilder();
                 for (ActivityInfo.WindowSoftInputMode w : windowSoftInputModeList) {
@@ -101,27 +120,31 @@ public class XmlTranslator implements XmlStreamer {
                 sb.deleteCharAt(sb.length() - 1);
                 value = sb.toString();
             }
-        } else if (attribute.name.equals("launchMode")) {
+        } else if (attributeName.equals("launchMode")) {
             ActivityInfo.LaunchMode launchMode =
-                    ActivityInfo.LaunchMode.valueOf(Integer.parseInt(value));
+                    ActivityInfo.LaunchMode.valueOf(Integer.valueOf(value));
             if (launchMode != null) {
                 value = launchMode.toString();
             }
         }
-        sb.append(attribute.name).append('=').append('"')
-                .append(value.replace("\"", "\\\"")).append('"');
+        return value;
     }
 
     @Override
     public void onCData(XmlCData xmlCData) {
         appendShift(shift);
-        sb.append(xmlCData.toString()).append('\n');
+        sb.append(xmlCData.toStringValue(resourceTable, locale)).append('\n');
         isLastStartTag = false;
     }
 
     @Override
-    public void onNamespace(XmlNamespaceStartTag namespace) {
-        this.xmlNamespace = namespace;
+    public void onNamespaceStart(XmlNamespaceStartTag tag) {
+        this.namespaces.addNamespace(tag);
+    }
+
+    @Override
+    public void onNamespaceEnd(XmlNamespaceEndTag tag) {
+        this.namespaces.removeNamespace(tag);
     }
 
     private void appendShift(int shift) {

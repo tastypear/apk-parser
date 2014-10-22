@@ -4,7 +4,10 @@ import net.dongliu.apk.parser.bean.ApkMeta;
 import net.dongliu.apk.parser.bean.Feature;
 import net.dongliu.apk.parser.bean.GlEsVersion;
 import net.dongliu.apk.parser.bean.UseFeature;
+import net.dongliu.apk.parser.struct.resource.ResourceTable;
 import net.dongliu.apk.parser.struct.xml.*;
+
+import java.util.Locale;
 
 /**
  * construct apk meta infos when parse AndroidManifest.xml
@@ -19,7 +22,13 @@ public class ApkMetaConstructor implements XmlStreamer {
 
     private Feature currentFeature;
 
-    public ApkMetaConstructor() {
+    private ResourceTable resourceTable;
+
+    private Locale locale;
+
+    public ApkMetaConstructor(ResourceTable resourceTable, Locale locale) {
+        this.resourceTable = resourceTable;
+        this.locale = locale;
         apkMeta = new ApkMeta();
     }
 
@@ -36,7 +45,7 @@ public class ApkMetaConstructor implements XmlStreamer {
     @Override
     public void onAttribute(Attribute attribute) {
         String name = attribute.name;
-        String value = attribute.getValue();
+        String value = attribute.toStringValue(resourceTable, locale);
         // get basic apk metas
         if (currentTag.equals("manifest")) {
             if (name.equals("package")) {
@@ -54,11 +63,11 @@ public class ApkMetaConstructor implements XmlStreamer {
             }
         } else if (currentTag.equals("uses-sdk")) {
             if (name.equals("minSdkVersion")) {
-                apkMeta.setMinSdkVersion(Integer.parseInt(value));
+                apkMeta.setMinSdkVersion(value);
             } else if (name.equals("maxSdkVersion")) {
-                apkMeta.setMaxSdkVersion(Integer.parseInt(value));
+                apkMeta.setMaxSdkVersion(value);
             } else if (name.equals("targetSdkVersion")) {
-                apkMeta.setTargetSdkVersion(Integer.parseInt(value));
+                apkMeta.setTargetSdkVersion(value);
             }
         } else if (currentTag.equals("uses-permission")) {
             if (name.equals("name")) {
@@ -101,7 +110,12 @@ public class ApkMetaConstructor implements XmlStreamer {
     }
 
     @Override
-    public void onNamespace(XmlNamespaceStartTag namespace) {
+    public void onNamespaceStart(XmlNamespaceStartTag tag) {
+
+    }
+
+    @Override
+    public void onNamespaceEnd(XmlNamespaceEndTag tag) {
 
     }
 
