@@ -404,6 +404,12 @@ public class ApkParser implements Closeable {
         this.preferredLocale = preferredLocale;
     }
 
+    /**
+     * Use dom to parse launchable-activity
+     * An apk could have multiple launchable-activities
+     * It may get error name for the sake of freak manifest
+     * ie: <action android:name="android.intent.action.MAIN" /> is not a child of <intent-filter>
+     */
     private boolean hasParsedLaunchableActivity = false;
     private void parseLaunchableActivity() throws IOException {
         StringReader stringReader = new StringReader(getManifestXml());
@@ -448,6 +454,12 @@ public class ApkParser implements Closeable {
         hasParsedLaunchableActivity=true;
     }
 
+    /**
+     * get launchable-activity
+     *
+     * @return
+     * @throws IOException
+     */
     public List<String> getLaunchableActivity() throws IOException {
         if(!hasParsedLaunchableActivity) {
             parseLaunchableActivity();
