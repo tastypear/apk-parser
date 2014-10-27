@@ -8,11 +8,14 @@ import net.dongliu.apk.parser.struct.resource.ResourceTable;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.compress.utils.IOUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
-import java.io.Closeable;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.*;
 import java.security.cert.CertificateEncodingException;
 import java.util.*;
 import java.util.jar.JarEntry;
@@ -36,16 +39,23 @@ public class ApkParser implements Closeable {
     private final ZipFile zf;
     private File apkFile;
 
+    private List<String> launchableActivity;
+
     /**
      * default is null
      */
     private Locale preferredLocale = Locale.getDefault();
+
+    public ApkParser(String apkFile) throws IOException {
+        this(new File(apkFile));
+    }
 
     public ApkParser(File apkFile) throws IOException {
         this.apkFile = apkFile;
         this.zf = new ZipFile(apkFile);
         this.manifestXmlMap = new HashMap<Locale, String>();
         this.apkMetaMap = new HashMap<Locale, ApkMeta>();
+        this.launchableActivity = new LinkedList<String>();
     }
 
     /**
@@ -73,6 +83,7 @@ public class ApkParser implements Closeable {
         if (apkMeta != null) {
             findNativeLib(apkMeta);
         }
+        parseLaunchableActivity();
         return apkMeta;
     }
 
@@ -391,5 +402,56 @@ public class ApkParser implements Closeable {
      */
     public void setPreferredLocale(Locale preferredLocale) {
         this.preferredLocale = preferredLocale;
+    }
+
+    private boolean hasParsedLaunchableActivity = false;
+    private void parseLaunchableActivity() throws IOException {
+        StringReader stringReader = new StringReader(getManifestXml());
+        InputSource inputSource  =  new InputSource(stringReader);
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        try {
+            DocumentBuilder documentBuilder = factory.newDocumentBuilder();
+            Document document = documentBuilder.parse(inputSource);
+            NodeList activities = document.getElementsByTagName("activity");
+            for (int i = 0; i < activities.getLength(); i++) {
+                boolean foundLAUNCHER = false;
+                boolean foundMAIN = false;
+                Element activity = (Element) activities.item(i);
+
+                NodeList categories = activity.getElementsByTagName("category");
+                for (int j = 0; j < categories.getLength(); j++) {
+                    if (((Element) (categories.item(j))).getAttribute("android:name")
+                            .equals("android.intent.category.LAUNCHER")) {
+                        foundLAUNCHER = true;
+                        break;
+                    }
+                }
+
+                if(!foundLAUNCHER) continue;
+
+                NodeList actions = activity.getElementsByTagName("action");
+                for (int j = 0; j < actions.getLength(); j++) {
+                    if (((Element) (actions.item(j))).getAttribute("android:name")
+                            .equals("android.intent.action.MAIN")) {
+                        foundMAIN = true;
+                        break;
+                    }
+                }
+
+                if(foundLAUNCHER && foundMAIN) {
+                    launchableActivity.add(activity.getAttribute("android:name"));
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        hasParsedLaunchableActivity=true;
+    }
+
+    public List<String> getLaunchableActivity() throws IOException {
+        if(!hasParsedLaunchableActivity) {
+            parseLaunchableActivity();
+        }
+        return launchableActivity;
     }
 }

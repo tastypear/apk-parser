@@ -49,8 +49,6 @@ public class ApkMeta {
      */
     private List<String> supportArches;
 
-    private String launchableActivity;
-
     public String getPackageName() {
         return packageName;
     }
@@ -218,13 +216,5 @@ public class ApkMeta {
 
     public void setSupportArches(List<String> supportArches) {
         this.supportArches = supportArches;
-    }
-
-    public String getLaunchableActivity() {
-        return launchableActivity;
-    }
-
-    public void setLaunchableActivity(String launchableActivity) {
-        this.launchableActivity = launchableActivity;
     }
 }
